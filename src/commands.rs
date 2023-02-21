@@ -50,7 +50,6 @@ pub fn hash_object(file: &str) -> Result<()> {
         use std::fmt::Write;
         write!(&mut sha1, "{:02X}", byte)?;
     }
-    println!("{}", sha1);
     let dir = &sha1[..2];
     fs::create_dir_all(format!(".git/objects/{}", dir))?;
     let filename = &sha1[2..];
