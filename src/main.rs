@@ -2,6 +2,7 @@
 use std::env;
 #[allow(unused_imports)]
 use std::fs;
+use std::str;
 
 use flate2::bufread::ZlibDecoder;
 use std::fs::File;
@@ -27,8 +28,10 @@ fn main() {
             let f = File::open(format!(".git/objects/{}/{}", dir, rest)).unwrap();
             let reader = BufReader::new(f);
             let mut z = ZlibDecoder::new(reader);
-            let mut s = String::new();
-            z.read_to_string(&mut s).unwrap();
+            let mut buf = Vec::new();
+            z.read_to_end(&mut buf).unwrap();
+            let null_byte = buf.iter().position(|b| *b == 0x0).unwrap();
+            let s = str::from_utf8(&buf[null_byte..]).unwrap();
             print!("{}", s);
         }
     } else {
