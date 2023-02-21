@@ -22,13 +22,8 @@ pub fn init() -> Result<()> {
 }
 
 pub fn cat_file(digest: &String) -> Result<()> {
-    let dir = &digest[..2];
-    let rest = &digest[2..];
-    let f = File::open(format!(".git/objects/{}/{}", dir, rest))?;
-    let reader = BufReader::new(f);
-    let mut z = ZlibDecoder::new(reader);
     let mut buf = Vec::new();
-    z.read_to_end(&mut buf)?;
+    read_digest(digest, &mut buf)?;
     // Split object at first null byte to strip length header
     let null_byte = buf.iter().position(|b| *b == 0x0).unwrap();
     let s = str::from_utf8(&buf[null_byte..])?;
@@ -46,17 +41,43 @@ pub fn hash_object(file: &str) -> Result<()> {
     let mut z = ZlibEncoder::new(Cursor::new(input), Compression::fast());
     let mut buf = Vec::new();
     z.read_to_end(&mut buf)?;
+    let digest = compute_digest(&buf)?;
+    write_digest(&digest, &mut buf)?;
+    println!("{}", digest);
+    Ok(())
+}
+
+pub fn ls_tree(digest: &str) -> Result<()> {
+    let mut buf = Vec::new();
+    read_digest(digest, &mut buf)?;
+    Ok(())
+}
+
+fn read_digest(digest: &str, buf: &mut Vec<u8>) -> Result<()> {
+    let dir = &digest[..2];
+    let file = &digest[2..];
+    let f = File::open(format!(".git/objects/{}/{}", dir, file))?;
+    let reader = BufReader::new(f);
+    let mut z = ZlibDecoder::new(reader);
+    z.read_to_end(buf)?;
+    Ok(())
+}
+
+fn write_digest(digest: &str, buf: &Vec<u8>) -> Result<()> {
+    let dir = &digest[..2];
+    let file = &digest[2..];
+    fs::create_dir_all(format!(".git/objects/{}", dir))?;
+    fs::write(format!(".git/objects/{}/{}", dir, file), buf)?;
+    Ok(())
+}
+
+fn compute_digest(buf: &Vec<u8>) -> Result<String> {
     let mut hasher = Sha1::new();
     hasher.update(&buf);
-    let mut sha1 = String::new();
+    let mut digest = String::new();
     for byte in hasher.finalize().iter() {
         use std::fmt::Write;
-        write!(&mut sha1, "{:02x}", byte)?;
+        write!(&mut digest, "{:02x}", byte)?;
     }
-    let dir = &sha1[..2];
-    fs::create_dir_all(format!(".git/objects/{}", dir))?;
-    let filename = &sha1[2..];
-    fs::write(format!(".git/objects/{}/{}", dir, filename), buf)?;
-    println!("{}", sha1);
-    Ok(())
+    Ok(digest)
 }
