@@ -19,6 +19,14 @@ fn main() -> Result<()> {
             let sha = &args[3];
             cat_file(sha)
         }
+    } else if args[1] == "hash-object" {
+        if args[2] != "-w" {
+            println!("Incorrect arg format");
+            Ok(())
+        } else {
+            let file = &args[3];
+            hash_object(file)
+        }
     } else {
         println!("unknown command: {}", args[1]);
         Ok(())
