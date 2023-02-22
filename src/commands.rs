@@ -91,7 +91,6 @@ fn compute_digest(buf: &Vec<u8>) -> Result<String> {
 
 fn strip_header(buf: &Vec<u8>) -> &[u8] {
     let null_byte = buf.iter().position(|b| *b == 0x0).unwrap();
-    println!("Null byte: {}", null_byte);
     &buf[(null_byte + 1)..]
 }
 
