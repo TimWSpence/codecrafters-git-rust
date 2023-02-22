@@ -25,9 +25,9 @@ pub fn cat_file(digest: &String) -> Result<()> {
     let mut buf = Vec::new();
     read_digest(digest, &mut buf)?;
     // Split object at first null byte to strip length header
-    let null_byte = buf.iter().position(|b| *b == 0x0).unwrap();
-    let s = str::from_utf8(&buf[null_byte..])?;
-    print!("{}", s);
+    let s = strip_header(&buf);
+    let content = str::from_utf8(s)?;
+    print!("{}", content);
     Ok(())
 }
 
@@ -50,6 +50,13 @@ pub fn hash_object(file: &str) -> Result<()> {
 pub fn ls_tree(digest: &str) -> Result<()> {
     let mut buf = Vec::new();
     read_digest(digest, &mut buf)?;
+    // let s = strip_header(&buf)?;
+    // for line in s.lines() {
+    //     let mut sections = line.split(" ");
+    //     let _mode = sections.next().unwrap();
+    //     let name = sections.next().unwrap();
+    //     println!("{}", name);
+    // }
     Ok(())
 }
 
@@ -80,4 +87,21 @@ fn compute_digest(buf: &Vec<u8>) -> Result<String> {
         write!(&mut digest, "{:02x}", byte)?;
     }
     Ok(digest)
+}
+
+fn strip_header(buf: &Vec<u8>) -> &[u8] {
+    let null_byte = buf.iter().position(|b| *b == 0x0).unwrap();
+    println!("Null byte: {}", null_byte);
+    &buf[(null_byte + 1)..]
+}
+
+fn parse_tree(buf: &[u8]) -> Result<Vec<TreeEntry>> {
+    Ok(Vec::new())
+}
+
+struct TreeEntry<'a> {
+    //Don't care to interpret this
+    mode: &'a str,
+    name: &'a str,
+    digest: &'a [u8],
 }
