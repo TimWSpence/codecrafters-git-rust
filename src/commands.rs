@@ -50,13 +50,11 @@ pub fn hash_object(file: &str) -> Result<()> {
 pub fn ls_tree(digest: &str) -> Result<()> {
     let mut buf = Vec::new();
     read_digest(digest, &mut buf)?;
-    // let s = strip_header(&buf)?;
-    // for line in s.lines() {
-    //     let mut sections = line.split(" ");
-    //     let _mode = sections.next().unwrap();
-    //     let name = sections.next().unwrap();
-    //     println!("{}", name);
-    // }
+    let b = strip_header(&buf);
+    let entries = parse_tree(b)?;
+    for entry in entries {
+        println!("{}", entry.name);
+    }
     Ok(())
 }
 
@@ -95,7 +93,38 @@ fn strip_header(buf: &Vec<u8>) -> &[u8] {
 }
 
 fn parse_tree(buf: &[u8]) -> Result<Vec<TreeEntry>> {
-    Ok(Vec::new())
+    fn find(target: u8, buf: &[u8]) -> usize {
+        let mut idx = 0;
+        for byte in &buf[idx..] {
+            if *byte == target {
+                break;
+            }
+            idx += 1;
+        }
+        idx
+    }
+
+    let mut idx = 0;
+    let mut res = Vec::new();
+    while idx < buf.len() {
+        let sp = find(0x20, &buf[idx..]);
+        let mode = str::from_utf8(&buf[idx..(idx + sp)])?;
+        idx += sp;
+        // Space separator
+        assert!(buf[idx] == 0x20);
+        idx += 1;
+        let null_byte = find(0x00, &buf[idx..]);
+        let name = str::from_utf8(&buf[idx..(idx + null_byte)])?;
+        idx += null_byte;
+        // Null byte separator
+        assert!(buf[idx] == 0x00);
+        idx += 1;
+        // 20 byte digest
+        let digest = &buf[idx..(idx + 20)];
+        idx += 20;
+        res.push(TreeEntry { mode, name, digest });
+    }
+    Ok(res)
 }
 
 struct TreeEntry<'a> {
