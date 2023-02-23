@@ -35,6 +35,8 @@ fn main() -> Result<()> {
             let digest = &args[3];
             ls_tree(digest)
         }
+    } else if args[1] == "write-tree" {
+        write_tree()
     } else {
         println!("unknown command: {}", args[1]);
         Ok(())

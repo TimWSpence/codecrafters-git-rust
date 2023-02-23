@@ -1,6 +1,9 @@
 use std::fs;
+use std::fs::DirEntry;
 use std::io::Cursor;
 use std::io::Write;
+use std::os::unix::prelude::MetadataExt;
+use std::path::PathBuf;
 use std::str;
 
 use anyhow::Result;
@@ -56,6 +59,18 @@ pub fn ls_tree(digest: &str) -> Result<()> {
         println!("{}", entry.name);
     }
     Ok(())
+}
+
+pub fn write_tree() -> Result<()> {
+    write_root(".")?;
+    Ok(())
+}
+
+fn write_root(root: &str) -> Result<TreeEntry> {
+    let mut entries: Vec<DirEntry> = fs::read_dir(root)?.map(|e| e.unwrap()).collect();
+    entries.sort_by(|x, y| x.path().cmp(&y.path()));
+    println!("{:0o}", entries.first().unwrap().metadata().unwrap().mode());
+    todo!()
 }
 
 fn read_digest(digest: &str, buf: &mut Vec<u8>) -> Result<()> {
