@@ -41,10 +41,10 @@ pub fn hash_object(file: &str) -> Result<()> {
     let mut input = Vec::new();
     input.write(format!("blob {}\x00", len).as_bytes())?;
     b.read_to_end(&mut input)?;
+    let digest = compute_digest(&input)?;
     let mut z = ZlibEncoder::new(Cursor::new(input), Compression::fast());
     let mut buf = Vec::new();
     z.read_to_end(&mut buf)?;
-    let digest = compute_digest(&buf)?;
     write_digest(&digest, &mut buf)?;
     println!("{}", digest);
     Ok(())
