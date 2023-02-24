@@ -25,7 +25,8 @@ fn main() -> Result<()> {
             Ok(())
         } else {
             let file = &args[3];
-            hash_object(file)
+            hash_object(file)?;
+            Ok(())
         }
     } else if args[1] == "ls-tree" {
         if args[2] != "--name-only" {

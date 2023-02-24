@@ -34,20 +34,21 @@ pub fn cat_file(digest: &String) -> Result<()> {
     Ok(())
 }
 
-pub fn hash_object(file: &str) -> Result<()> {
+pub fn hash_object(file: &str) -> Result<Vec<u8>> {
     let file = File::open(file)?;
     let len = file.metadata()?.len();
     let mut b = BufReader::new(file);
     let mut input = Vec::new();
     input.write(format!("blob {}\x00", len).as_bytes())?;
     b.read_to_end(&mut input)?;
-    let digest = compute_digest(&input)?;
+    let digest = compute_digest(&input);
+    let sha = format_digest(&digest)?;
     let mut z = ZlibEncoder::new(Cursor::new(input), Compression::fast());
     let mut buf = Vec::new();
     z.read_to_end(&mut buf)?;
-    write_digest(&digest, &mut buf)?;
-    println!("{}", digest);
-    Ok(())
+    write_digest(&sha, &mut buf)?;
+    println!("{}", sha);
+    Ok(digest)
 }
 
 pub fn ls_tree(digest: &str) -> Result<()> {
@@ -69,7 +70,35 @@ pub fn write_tree() -> Result<()> {
 fn write_root(root: &str) -> Result<TreeEntry> {
     let mut entries: Vec<DirEntry> = fs::read_dir(root)?.map(|e| e.unwrap()).collect();
     entries.sort_by(|x, y| x.path().cmp(&y.path()));
-    println!("{:0o}", entries.first().unwrap().metadata().unwrap().mode());
+    let mut buf = Vec::new();
+    //TODO what is the length here?
+    write!(&mut buf, "tree {}\x00", entries.len())?;
+    for entry in entries {
+        if entry.metadata().unwrap().is_file() {
+            let digest = hash_object(entry.path().to_str().unwrap())?;
+            let mode = entry.metadata()?.mode();
+            let n = entry.file_name();
+            let name = n.to_str().unwrap();
+            write!(&mut buf, "1{:0o} {}\x00", mode, name)?;
+            buf.append(&mut digest.to_vec());
+        } else {
+            if entry.metadata().unwrap().is_dir() {
+                let path = entry.path();
+                let t = write_root(path.to_str().unwrap())?;
+                let mode = entry.metadata()?.mode();
+                let n = entry.file_name();
+                let name = n.to_str().unwrap();
+                write!(&mut buf, "{:0o} {}\x00", mode, name)?;
+                buf.append(&mut t.digest.to_vec());
+            } else {
+                panic!(
+                    "{} is neither a file or a directory",
+                    entry.path().to_str().unwrap()
+                )
+            }
+        }
+    }
+    //TODO hash buf and compress and write to to filesystem
     todo!()
 }
 
@@ -91,15 +120,19 @@ fn write_digest(digest: &str, buf: &Vec<u8>) -> Result<()> {
     Ok(())
 }
 
-fn compute_digest(buf: &Vec<u8>) -> Result<String> {
+fn compute_digest(buf: &Vec<u8>) -> Vec<u8> {
     let mut hasher = Sha1::new();
     hasher.update(&buf);
-    let mut digest = String::new();
-    for byte in hasher.finalize().iter() {
+    hasher.finalize().to_vec()
+}
+
+fn format_digest(digest: &Vec<u8>) -> Result<String> {
+    let mut buf = String::new();
+    for byte in digest.iter() {
         use std::fmt::Write;
-        write!(&mut digest, "{:02x}", byte)?;
+        write!(&mut buf, "{:02x}", byte)?;
     }
-    Ok(digest)
+    Ok(buf)
 }
 
 fn strip_header(buf: &Vec<u8>) -> &[u8] {
