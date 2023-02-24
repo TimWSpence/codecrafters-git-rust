@@ -98,13 +98,13 @@ fn write_root(root: &str) -> Result<TreeEntry> {
             }
         }
     }
-    //TODO hash buf and compress and write to to filesystem
     let digest = compute_digest(&buf);
     let sha = format_digest(&digest)?;
     let mut z = ZlibEncoder::new(Cursor::new(buf), Compression::fast());
     let mut out = Vec::new();
     z.read_to_end(&mut out)?;
     write_digest(&sha, &out)?;
+    todo!("Need to return tree")
 }
 
 fn read_digest(digest: &str, buf: &mut Vec<u8>) -> Result<()> {
