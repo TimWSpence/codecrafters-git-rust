@@ -36,7 +36,14 @@ pub fn cat_file(digest: &String) -> Result<()> {
     Ok(())
 }
 
-pub fn hash_object(file: &str) -> Result<Vec<u8>> {
+pub fn hash_object(file: &str) -> Result<()> {
+    let digest = do_hash_object(file)?;
+    let sha = format_digest(&digest)?;
+    println!("{}", &sha);
+    Ok(())
+}
+
+fn do_hash_object(file: &str) -> Result<Vec<u8>> {
     let file = File::open(file)?;
     let len = file.metadata()?.len();
     let mut b = BufReader::new(file);
@@ -49,7 +56,6 @@ pub fn hash_object(file: &str) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
     z.read_to_end(&mut buf)?;
     write_digest(&sha, &mut buf)?;
-    println!("{}", sha);
     Ok(digest)
 }
 
@@ -80,7 +86,7 @@ fn write_root(root: &str) -> Result<Vec<u8>> {
     let mut tmp = Vec::new();
     for entry in entries {
         if entry.metadata().unwrap().is_file() {
-            let digest = hash_object(entry.path().to_str().unwrap())?;
+            let digest = do_hash_object(entry.path().to_str().unwrap())?;
             let mode = entry.metadata()?.mode();
             let name = entry.file_name();
             let name = name.to_str().unwrap();
