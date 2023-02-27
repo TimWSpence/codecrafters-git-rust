@@ -84,7 +84,7 @@ fn write_root(root: &str) -> Result<Vec<u8>> {
             let mode = entry.metadata()?.mode();
             let name = entry.file_name();
             let name = name.to_str().unwrap();
-            write!(&mut tmp, "1{:0o} {}\x00", mode, name)?;
+            write!(&mut tmp, "{:0o} {}\x00", mode, name)?;
             tmp.append(&mut digest.to_vec());
         } else {
             if entry.metadata().unwrap().is_dir()
@@ -126,8 +126,10 @@ fn read_digest(digest: &str, buf: &mut Vec<u8>) -> Result<()> {
 fn write_digest(digest: &str, buf: &Vec<u8>) -> Result<()> {
     let dir = &digest[..2];
     let file = &digest[2..];
-    fs::create_dir_all(format!(".git/objects/{}", dir))?;
-    fs::write(format!(".git/objects/{}/{}", dir, file), buf)?;
+    let cwd = env::current_dir().unwrap();
+    let cwd = cwd.to_str().unwrap();
+    fs::create_dir_all(format!("{}/.git/objects/{}", cwd, dir))?;
+    fs::write(format!("{}/.git/objects/{}/{}", cwd, dir, file), buf)?;
     Ok(())
 }
 
