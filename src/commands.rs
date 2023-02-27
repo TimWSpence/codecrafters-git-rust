@@ -3,6 +3,7 @@ use std::fs::DirEntry;
 use std::io::Cursor;
 use std::io::Write;
 use std::os::unix::prelude::MetadataExt;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str;
 
@@ -62,34 +63,33 @@ pub fn ls_tree(digest: &str) -> Result<()> {
     Ok(())
 }
 
+// Assumes that it is invoked from the root of the git repository
 pub fn write_tree() -> Result<()> {
     write_root(".")?;
     Ok(())
 }
 
-fn write_root(root: &str) -> Result<TreeEntry> {
+fn write_root(root: &str) -> Result<Vec<u8>> {
     let mut entries: Vec<DirEntry> = fs::read_dir(root)?.map(|e| e.unwrap()).collect();
     entries.sort_by(|x, y| x.path().cmp(&y.path()));
-    let mut buf = Vec::new();
-    //TODO what is the length here?
-    write!(&mut buf, "tree {}\x00", entries.len())?;
+    let mut tmp = Vec::new();
     for entry in entries {
         if entry.metadata().unwrap().is_file() {
             let digest = hash_object(entry.path().to_str().unwrap())?;
             let mode = entry.metadata()?.mode();
-            let n = entry.file_name();
-            let name = n.to_str().unwrap();
-            write!(&mut buf, "1{:0o} {}\x00", mode, name)?;
-            buf.append(&mut digest.to_vec());
+            let name = entry.file_name();
+            let name = name.to_str().unwrap();
+            write!(&mut tmp, "1{:0o} {}\x00", mode, name)?;
+            tmp.append(&mut digest.to_vec());
         } else {
             if entry.metadata().unwrap().is_dir() {
                 let path = entry.path();
-                let t = write_root(path.to_str().unwrap())?;
+                let mut t = write_root(path.to_str().unwrap())?;
                 let mode = entry.metadata()?.mode();
-                let n = entry.file_name();
-                let name = n.to_str().unwrap();
-                write!(&mut buf, "{:0o} {}\x00", mode, name)?;
-                buf.append(&mut t.digest.to_vec());
+                let name = entry.file_name();
+                let name = name.to_str().unwrap();
+                write!(&mut tmp, "{:0o} {}\x00", mode, name)?;
+                tmp.append(&mut t);
             } else {
                 panic!(
                     "{} is neither a file or a directory",
@@ -98,13 +98,19 @@ fn write_root(root: &str) -> Result<TreeEntry> {
             }
         }
     }
+    let mut buf = Vec::new();
+    write!(&mut buf, "tree {}\x00", tmp.len())?;
+    buf.append(&mut tmp);
     let digest = compute_digest(&buf);
     let sha = format_digest(&digest)?;
     let mut z = ZlibEncoder::new(Cursor::new(buf), Compression::fast());
     let mut out = Vec::new();
     z.read_to_end(&mut out)?;
     write_digest(&sha, &out)?;
-    todo!("Need to return tree")
+    let path = Path::new(root);
+    let name = path.file_name().unwrap().to_str().unwrap();
+    let mode = path.metadata().unwrap().mode();
+    Ok(digest)
 }
 
 fn read_digest(digest: &str, buf: &mut Vec<u8>) -> Result<()> {
