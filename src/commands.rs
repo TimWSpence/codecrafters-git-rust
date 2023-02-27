@@ -1,3 +1,4 @@
+use std::env;
 use std::fs;
 use std::fs::DirEntry;
 use std::io::Cursor;
@@ -65,7 +66,9 @@ pub fn ls_tree(digest: &str) -> Result<()> {
 
 // Assumes that it is invoked from the root of the git repository
 pub fn write_tree() -> Result<()> {
-    let digest = write_root(".")?;
+    let cwd = env::current_dir()?;
+    let cwd = cwd.to_str().unwrap();
+    let digest = write_root(cwd)?;
     let sha = format_digest(&digest)?;
     println!("{}", sha);
     Ok(())
@@ -84,7 +87,9 @@ fn write_root(root: &str) -> Result<Vec<u8>> {
             write!(&mut tmp, "1{:0o} {}\x00", mode, name)?;
             tmp.append(&mut digest.to_vec());
         } else {
-            if entry.metadata().unwrap().is_dir() {
+            if entry.metadata().unwrap().is_dir()
+                && entry.path().file_name().unwrap().to_str().unwrap() != ".git"
+            {
                 let path = entry.path();
                 let mut t = write_root(path.to_str().unwrap())?;
                 let mode = entry.metadata()?.mode();
@@ -93,10 +98,6 @@ fn write_root(root: &str) -> Result<Vec<u8>> {
                 write!(&mut tmp, "{:0o} {}\x00", mode, name)?;
                 tmp.append(&mut t);
             } else {
-                panic!(
-                    "{} is neither a file or a directory",
-                    entry.path().to_str().unwrap()
-                )
             }
         }
     }
@@ -109,9 +110,6 @@ fn write_root(root: &str) -> Result<Vec<u8>> {
     let mut out = Vec::new();
     z.read_to_end(&mut out)?;
     write_digest(&sha, &out)?;
-    let path = Path::new(root);
-    let name = path.file_name().unwrap().to_str().unwrap();
-    let mode = path.metadata().unwrap().mode();
     Ok(digest)
 }
 
