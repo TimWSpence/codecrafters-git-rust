@@ -98,10 +98,9 @@ fn write_root(root: &str) -> Result<Vec<u8>> {
             {
                 let path = entry.path();
                 let mut t = write_root(path.to_str().unwrap())?;
-                let mode = entry.metadata()?.mode();
                 let name = entry.file_name();
                 let name = name.to_str().unwrap();
-                write!(&mut tmp, "{:0o} {}\x00", mode, name)?;
+                write!(&mut tmp, "40000 {}\x00", name)?;
                 tmp.append(&mut t);
             } else {
             }
