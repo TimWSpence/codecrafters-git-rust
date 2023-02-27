@@ -65,7 +65,9 @@ pub fn ls_tree(digest: &str) -> Result<()> {
 
 // Assumes that it is invoked from the root of the git repository
 pub fn write_tree() -> Result<()> {
-    write_root(".")?;
+    let digest = write_root(".")?;
+    let sha = format_digest(&digest)?;
+    println!("{}", sha);
     Ok(())
 }
 
