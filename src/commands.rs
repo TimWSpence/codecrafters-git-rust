@@ -80,6 +80,8 @@ pub fn write_tree() -> Result<()> {
     Ok(())
 }
 
+// TODO https://stackoverflow.com/questions/737673/how-to-read-the-mode-field-of-git-ls-trees-output
+// git doesn't model all linux file permission
 fn write_root(root: &str) -> Result<Vec<u8>> {
     let mut entries: Vec<DirEntry> = fs::read_dir(root)?.map(|e| e.unwrap()).collect();
     entries.sort_by(|x, y| x.path().cmp(&y.path()));
