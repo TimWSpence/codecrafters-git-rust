@@ -104,6 +104,13 @@ pub fn commit_tree(tree: &str, parent: &str, message: &str) -> Result<()> {
     let mut buf = Vec::new();
     write!(&mut buf, "commit {}\x00", tmp.len())?;
     buf.append(&mut tmp);
+    let digest = compute_digest(&buf);
+    let sha = format_digest(&digest)?;
+    let mut z = ZlibEncoder::new(Cursor::new(buf), Compression::fast());
+    let mut out = Vec::new();
+    z.read_to_end(&mut out)?;
+    write_digest(&sha, &mut out)?;
+    println!("{}", sha);
     Ok(())
 }
 
