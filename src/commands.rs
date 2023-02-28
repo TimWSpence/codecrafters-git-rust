@@ -7,6 +7,7 @@ use std::os::unix::prelude::MetadataExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use flate2::bufread::ZlibDecoder;
@@ -77,6 +78,32 @@ pub fn write_tree() -> Result<()> {
     let digest = write_root(cwd)?;
     let sha = format_digest(&digest)?;
     println!("{}", sha);
+    Ok(())
+}
+
+pub fn commit_tree(tree: &str, parent: &str, message: &str) -> Result<()> {
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let mut tmp = Vec::new();
+    writeln!(&mut tmp, "tree {}", tree)?;
+    writeln!(&mut tmp, "parent {}", parent)?;
+    writeln!(
+        &mut tmp,
+        "author Tim Spence <timothywspence@gmail.com> {} +0000",
+        now
+    )?;
+    writeln!(
+        &mut tmp,
+        "committer Tim Spence <timothywspence@gmail.com> {} +0000",
+        now
+    )?;
+    writeln!(&mut tmp, "")?;
+    writeln!(&mut tmp, "{}", message)?;
+    let mut buf = Vec::new();
+    write!(&mut buf, "commit {}\x00", tmp.len())?;
+    buf.append(&mut tmp);
     Ok(())
 }
 

@@ -38,7 +38,15 @@ fn main() -> Result<()> {
         }
     } else if args[1] == "write-tree" {
         write_tree()
+    } else if args[1] == "commit-tree" {
+        let tree = &args[2];
+        assert!(args[3] == "-p");
+        let parent = &args[4];
+        assert!(args[5] == "-m");
+        let message = &args[6];
+        commit_tree(tree, parent, message)
     } else {
+
         println!("unknown command: {}", args[1]);
         Ok(())
     }
