@@ -1,5 +1,6 @@
 use anyhow::Result;
 use reqwest::*;
+use std::str;
 
 pub struct ApiClient<'a> {
     client: Client,
@@ -41,8 +42,8 @@ impl<'a> ApiClient<'a> {
         let req = self
             .client
             .post(format!("{}/git-upload-pack", self.url))
-            .header("Content-Type", "x-git-upload-request")
-            .body(format!("0032want {}\n00000009done\n", commit))
+            .header("Content-Type", "application/x-git-upload-pack-request")
+            .body(format!("0032want {}\n00000009done", commit))
             .build()?;
 
         let res = self.client.execute(req).await?;
