@@ -26,11 +26,13 @@ impl<'a> ApiClient<'a> {
         let res = self.client.execute(req).await?;
         let body = res.text().await?;
         let head_line = body.lines().find(|l| l.contains("HEAD")).unwrap();
+        // Skip flush
         let tmp = if &head_line[0..4] == "0000" {
             &head_line[4..]
         } else {
             head_line
         };
+        // Skip length encoding and take the 40 byte hex-encoded digest
         let digest = &tmp[4..44];
         Ok(digest.to_string())
     }
