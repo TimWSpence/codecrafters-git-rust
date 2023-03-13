@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::str;
 use std::time::SystemTime;
 
+use crate::api_client::*;
 use anyhow::Result;
 use flate2::bufread::ZlibDecoder;
 use flate2::bufread::ZlibEncoder;
@@ -111,6 +112,13 @@ pub fn commit_tree(tree: &str, parent: &str, message: &str) -> Result<()> {
     z.read_to_end(&mut out)?;
     write_digest(&sha, &mut out)?;
     println!("{}", sha);
+    Ok(())
+}
+
+pub async fn clone(url: &str, path: &str) -> Result<()> {
+    let client = ApiClient::new(url);
+    let head = client.head().await?;
+    client.fetch_pack(&head).await?;
     Ok(())
 }
 

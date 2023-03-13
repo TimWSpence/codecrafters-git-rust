@@ -6,8 +6,10 @@ use std::fs;
 use anyhow::Result;
 mod commands;
 use commands::*;
+mod api_client;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     if args[1] == "init" {
         init()
@@ -45,8 +47,11 @@ fn main() -> Result<()> {
         assert!(args[5] == "-m");
         let message = &args[6];
         commit_tree(tree, parent, message)
+    } else if args[1] == "clone" {
+        let url = &args[2];
+        let path = &args[3];
+        clone(url, path).await
     } else {
-
         println!("unknown command: {}", args[1]);
         Ok(())
     }
