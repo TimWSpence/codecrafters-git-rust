@@ -63,21 +63,26 @@ impl<'a> ApiClient<'a> {
         let num_objects = u32::from_be_bytes(pack[8..12].try_into().unwrap());
         dbg!(num_objects);
         let mut pack = &pack[12..];
-        let mut count = 1;
-        while count <= num_objects {
+        let mut count = 0;
+        while count < num_objects {
             let _type = pack[0] & 0x70;
             let mut len: usize = (pack[0] & 0x0f).into();
+            println!("#######{:08b}", pack[0]);
+            dbg!(len);
             let mut idx = 1;
-            while (pack[idx] & (1 << 7)) == 0 {
+            while (pack[idx - 1] & (1 << 7)) != 0 {
                 let tmp: usize = u8::from_be(pack[idx] & 0x7f).into();
-                let tmp = tmp << 7;
+                println!("{:08b}", pack[idx]);
+                let tmp = tmp << (4 + 7 * (idx - 1));
+                dbg!(tmp);
                 len += tmp;
                 idx += 1;
             }
-            //TODO zero indexed or not?
-            let _bytes = &pack[idx..len - idx];
+            dbg!(len);
+            //TODO this is the length after decompression :sob:
+            let _bytes = &pack[idx..idx + len];
             count += 1;
-            pack = &pack[len - idx..]
+            pack = &pack[idx + len..]
         }
         Ok(())
     }
