@@ -1,7 +1,9 @@
 use anyhow::Result;
 use bytes::Bytes;
+use flate2::bufread::ZlibDecoder;
 use reqwest::*;
-use std::str;
+use std::io::Cursor;
+use std::{io::Read, str};
 
 pub struct ApiClient<'a> {
     client: Client,
@@ -67,22 +69,22 @@ impl<'a> ApiClient<'a> {
         while count < num_objects {
             let _type = pack[0] & 0x70;
             let mut len: usize = (pack[0] & 0x0f).into();
-            println!("#######{:08b}", pack[0]);
             dbg!(len);
             let mut idx = 1;
             while (pack[idx - 1] & (1 << 7)) != 0 {
                 let tmp: usize = u8::from_be(pack[idx] & 0x7f).into();
-                println!("{:08b}", pack[idx]);
                 let tmp = tmp << (4 + 7 * (idx - 1));
-                dbg!(tmp);
                 len += tmp;
                 idx += 1;
             }
             dbg!(len);
-            //TODO this is the length after decompression :sob:
             let _bytes = &pack[idx..idx + len];
+            let mut z = ZlibDecoder::new(Cursor::new(&pack[idx..]));
+            let mut buf = Vec::with_capacity(len);
+            z.read_to_end(&mut buf)?;
+            assert!(z.total_out() as usize == len);
             count += 1;
-            pack = &pack[idx + len..]
+            pack = &pack[idx + (z.total_in() as usize)..]
         }
         Ok(())
     }
