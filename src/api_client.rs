@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use reqwest::*;
 use std::str;
 
@@ -43,11 +44,41 @@ impl<'a> ApiClient<'a> {
             .client
             .post(format!("{}/git-upload-pack", self.url))
             .header("Content-Type", "application/x-git-upload-pack-request")
-            .body(format!("0032want {}\n00000009done", commit))
+            .body(format!("0032want {}\n00000009done\n", commit))
             .build()?;
-
         let res = self.client.execute(req).await?;
-        dbg!(res);
+        let body = res.bytes().await?;
+        //We're doing a clone so there is no common ancestor and hence we will always get NAK
+        assert!(str::from_utf8(&body[..8]) == Ok("0008NAK\n"));
+        ApiClient::parse_pack(&body[8..])
+    }
+
+    // https://github.com/git/git/blob/795ea8776befc95ea2becd8020c7a284677b4161/Documentation/gitformat-pack.txt
+    fn parse_pack(pack: &[u8]) -> Result<()> {
+        // Header
+        assert!(str::from_utf8(&pack[..4]) == Ok("PACK"));
+        // Version number
+        assert!(u32::from_be_bytes(pack[4..8].try_into().unwrap()) == 2);
+
+        let num_objects = u32::from_be_bytes(pack[8..12].try_into().unwrap());
+        dbg!(num_objects);
+        let mut pack = &pack[12..];
+        let mut count = 1;
+        while count <= num_objects {
+            let _type = pack[0] & 0x70;
+            let mut len: usize = (pack[0] & 0x0f).into();
+            let mut idx = 1;
+            while (pack[idx] & (1 << 7)) == 0 {
+                let tmp: usize = u8::from_be(pack[idx] & 0x7f).into();
+                let tmp = tmp << 7;
+                len += tmp;
+                idx += 1;
+            }
+            //TODO zero indexed or not?
+            let _bytes = &pack[idx..len - idx];
+            count += 1;
+            pack = &pack[len - idx..]
+        }
         Ok(())
     }
 }
