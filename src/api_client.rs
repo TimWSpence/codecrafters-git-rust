@@ -67,7 +67,10 @@ impl<'a> ApiClient<'a> {
         let mut pack = &pack[12..];
         let mut count = 0;
         while count < num_objects {
-            let _type = pack[0] & 0x70;
+            // TODO handle refs delta at least
+            let tpe = (pack[0] & 0x70) >> 4;
+            dbg!(tpe);
+            assert!(tpe <= 4);
             let mut len: usize = (pack[0] & 0x0f).into();
             dbg!(len);
             let mut idx = 1;
@@ -78,7 +81,6 @@ impl<'a> ApiClient<'a> {
                 idx += 1;
             }
             dbg!(len);
-            let _bytes = &pack[idx..idx + len];
             let mut z = ZlibDecoder::new(Cursor::new(&pack[idx..]));
             let mut buf = Vec::with_capacity(len);
             z.read_to_end(&mut buf)?;
