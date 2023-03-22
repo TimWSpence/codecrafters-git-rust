@@ -85,9 +85,7 @@ impl<'a> ApiClient<'a> {
             // TODO handle refs delta at least
             let tpe = (pack[0] & 0x70) >> 4;
             dbg!(tpe);
-            assert!(tpe <= 4);
             let mut len: usize = (pack[0] & 0x0f).into();
-            dbg!(len);
             let mut idx = 1;
             if pack[0] & (1 << 7) != 0 {
                 let (tmp, offset) = read_variable_length_int(&pack[1..]);
@@ -95,12 +93,16 @@ impl<'a> ApiClient<'a> {
                 idx += offset;
             }
             dbg!(len);
-            let mut z = ZlibDecoder::new(Cursor::new(&pack[idx..]));
-            let mut buf = Vec::with_capacity(len);
-            z.read_to_end(&mut buf)?;
-            assert!(z.total_out() as usize == len);
-            count += 1;
-            pack = &pack[idx + (z.total_in() as usize)..]
+            if tpe <= 4 {
+                let mut z = ZlibDecoder::new(Cursor::new(&pack[idx..]));
+                let mut buf = Vec::with_capacity(len);
+                z.read_to_end(&mut buf)?;
+                assert!(z.total_out() as usize == len);
+                count += 1;
+                pack = &pack[idx + (z.total_in() as usize)..]
+            } else {
+                todo!("handle deltas")
+            }
         }
         Ok(())
     }
