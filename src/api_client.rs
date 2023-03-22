@@ -57,6 +57,21 @@ impl<'a> ApiClient<'a> {
 
     // https://github.com/git/git/blob/795ea8776befc95ea2becd8020c7a284677b4161/Documentation/gitformat-pack.txt
     fn parse_pack(pack: &[u8]) -> Result<()> {
+        fn read_variable_length_int(bytes: &[u8]) -> (usize, usize) {
+            let mut res: usize = 0;
+            let mut idx: usize = 0;
+            loop {
+                let tmp: usize = u8::from_be(bytes[idx] & 0x7f).into();
+                let tmp = tmp << (7 * idx);
+                res |= tmp;
+                idx += 1;
+                if bytes[idx] & (1 << 7) == 0 {
+                    break;
+                }
+            }
+            (res, idx)
+        }
+
         // Header
         assert!(str::from_utf8(&pack[..4]) == Ok("PACK"));
         // Version number
@@ -74,11 +89,10 @@ impl<'a> ApiClient<'a> {
             let mut len: usize = (pack[0] & 0x0f).into();
             dbg!(len);
             let mut idx = 1;
-            while (pack[idx - 1] & (1 << 7)) != 0 {
-                let tmp: usize = u8::from_be(pack[idx] & 0x7f).into();
-                let tmp = tmp << (4 + 7 * (idx - 1));
-                len |= tmp;
-                idx += 1;
+            if pack[0] & (1 << 7) != 0 {
+                let (tmp, offset) = read_variable_length_int(&pack[1..]);
+                len |= tmp << 4;
+                idx += offset;
             }
             dbg!(len);
             let mut z = ZlibDecoder::new(Cursor::new(&pack[idx..]));
