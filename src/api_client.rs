@@ -77,7 +77,7 @@ impl<'a> ApiClient<'a> {
             while (pack[idx - 1] & (1 << 7)) != 0 {
                 let tmp: usize = u8::from_be(pack[idx] & 0x7f).into();
                 let tmp = tmp << (4 + 7 * (idx - 1));
-                len += tmp;
+                len |= tmp;
                 idx += 1;
             }
             dbg!(len);
